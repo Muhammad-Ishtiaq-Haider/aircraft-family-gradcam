@@ -1,0 +1,126 @@
+{
+  "project": "Aircraft Family Recognition Using Deep Learning and Grad-CAM",
+  "dataset": {
+    "name": "FGVC-Aircraft (2013b)",
+    "annotation_level": "family",
+    "num_classes": 70,
+    "split_sizes": {
+      "train": 3334,
+      "val": 3333,
+      "test": 3333
+    },
+    "split": "official"
+  },
+  "config": {
+    "epochs": 20,
+    "lr": 0.0005,
+    "batch_size": 64,
+    "optimizer": "AdamW",
+    "scheduler": "OneCycleLR",
+    "label_smoothing": 0.1,
+    "input_size": 224,
+    "seed": 42,
+    "amp": true,
+    "banner_cropped_px": 20
+  },
+  "models": {
+    "mobilenet_v2": {
+      "test_top1": 0.7803780436515808,
+      "test_top5": 0.9351935386657715,
+      "test_macro_f1": 0.7641905232069922,
+      "best_val_acc": 0.7716771677167716,
+      "train_seconds": 1580.556082725525,
+      "params_millions": 2.313542
+    },
+    "resnet18": {
+      "test_top1": 0.7701770067214966,
+      "test_top5": 0.9183918237686157,
+      "test_macro_f1": 0.7516200483372166,
+      "best_val_acc": 0.7635763576357636,
+      "train_seconds": 1528.0824666023254,
+      "params_millions": 11.212422
+    },
+    "efficientnet_b0": {
+      "test_top1": 0.7995799779891968,
+      "test_top5": 0.9405940771102905,
+      "test_macro_f1": 0.7820584410977045,
+      "best_val_acc": 0.7863786378637864,
+      "train_seconds": 1565.7500796318054,
+      "params_millions": 4.097218
+    }
+  },
+  "selected_model": "efficientnet_b0",
+  "selection_rule": "highest validation accuracy",
+  "selected_test_top1": 0.7995799779891968,
+  "most_confused_pairs": [
+    {
+      "true": "C-47",
+      "pred": "DC-3",
+      "count": 16
+    },
+    {
+      "true": "Boeing 777",
+      "pred": "Boeing 767",
+      "count": 11
+    },
+    {
+      "true": "A320",
+      "pred": "A330",
+      "count": 9
+    },
+    {
+      "true": "MD-90",
+      "pred": "MD-80",
+      "count": 7
+    },
+    {
+      "true": "MD-80",
+      "pred": "MD-90",
+      "count": 7
+    },
+    {
+      "true": "MD-11",
+      "pred": "DC-10",
+      "count": 7
+    },
+    {
+      "true": "Boeing 707",
+      "pred": "Boeing 747",
+      "count": 7
+    },
+    {
+      "true": "A320",
+      "pred": "Boeing 737",
+      "count": 7
+    },
+    {
+      "true": "Fokker 50",
+      "pred": "Dash 8",
+      "count": 6
+    },
+    {
+      "true": "Embraer E-Jet",
+      "pred": "Boeing 737",
+      "count": 6
+    }
+  ],
+  "gradcam_deletion_test": {
+    "images": 300,
+    "mean_true_class_prob": 0.7708734565973282,
+    "mean_drop_hiding_most_important_25pct": 0.737755088408788,
+    "mean_drop_hiding_least_important_25pct": 0.006598421136538188,
+    "fraction_images_where_top_region_hurts_more": 1.0
+  },
+  "onnx_check": {
+    "images": 100,
+    "argmax_agreement": 100,
+    "max_abs_logit_diff": 4.100799560546875e-05
+  },
+  "environment": {
+    "python": "3.13.16",
+    "torch": "2.11.0+cu130",
+    "torchvision": "0.26.0+cu130",
+    "device": "cuda",
+    "gpu": "Tesla T4"
+  }
+}
