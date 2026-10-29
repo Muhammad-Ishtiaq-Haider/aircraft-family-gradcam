@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aircraft Family Recognition Using Deep Learning and Grad-CAM</title>
+<meta name="description" content="Fine-tuned EfficientNet-B0 recognises 70 aircraft families (79.96% top-1 on the FGVC-Aircraft test set) and explains predictions with Grad-CAM. Live in-browser demo.">
+<style>
+:root{--bg:#fff;--fg:#1c2430;--muted:#5b6675;--card:#f4f6fa;--line:#dde2ea;--accent:#1f5fbf;--bar:#3b82f6}
+@media (prefers-color-scheme: dark){:root{--bg:#10151c;--fg:#e6ebf2;--muted:#9aa6b6;--card:#18202b;--line:#2a3441;--accent:#7db0ff;--bar:#4f8ff7}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{padding:48px 20px 28px;text-align:center;background:var(--card);border-bottom:1px solid var(--line)}
+header h1{margin:0 0 8px;font-size:clamp(1.6rem,4vw,2.4rem)}
+header p{margin:0 auto;max-width:760px;color:var(--muted)}
+nav{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin-top:18px;font-size:.95rem}
+a{color:var(--accent)}
+main{max-width:1000px;margin:0 auto;padding:12px 20px 60px}
+section{margin-top:44px}
+h2{font-size:1.5rem;margin:0 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+h3{margin:20px 0 6px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card b{display:block;font-size:1.7rem}
+.card span{color:var(--muted);font-size:.9rem}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+th{background:var(--card)}
+.links li{margin:6px 0}
+.demo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.thumbs{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 16px}
+.thumb{border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:8px;padding:4px;cursor:pointer;width:120px;font-size:.75rem}
+.thumb img{display:block;width:100%;height:auto;border-radius:5px}
+.thumb:hover,.thumb:focus{outline:2px solid var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-top:14px}
+#preview{max-width:300px;width:100%;border-radius:8px;border:1px solid var(--line);display:none}
+#results{flex:1;min-width:260px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 56px;gap:8px;align-items:center;margin:6px 0;font-size:.92rem}
+.bar{height:14px;background:var(--line);border-radius:7px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--bar)}
+#status{color:var(--muted);font-size:.92rem;margin:6px 0}
+.note{color:var(--muted);font-size:.9rem}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+figure{margin:0}
+figure img{width:100%;height:auto;border-radius:8px;border:1px solid var(--line)}
+figcaption{font-size:.88rem;color:var(--muted);margin-top:4px}
+.plots img{width:100%;height:auto;border-radius:8px;border:1px solid var(--line);background:#fff}
+code{background:var(--card);padding:1px 5px;border-radius:4px;font-size:.92em}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto}
+footer{border-top:1px solid var(--line);padding:22px 20px;text-align:center;color:var(--muted);font-size:.9rem}
+@media (max-width:520px){.bar-row{grid-template-columns:110px 1fr 50px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Aircraft Family Recognition Using Deep Learning and Grad-CAM</h1>
+<p>A fine-tuned EfficientNet-B0 that recognises 70 aircraft families from a photo and shows with Grad-CAM heatmaps where it looked. Deep Learning semester project by Muhammad Ishtiaq Haider.</p>
+<nav>
+<a href="#demo">Live demo</a><a href="#links">Project links</a><a href="#dataset">Dataset</a><a href="#code">Code</a><a href="#results-section">Results</a><a href="#gradcam">Grad-CAM</a><a href="#limitations">Limitations</a>
+</nav>
+</header>
+<main>
+
+<section id="summary">
+<h2>Summary</h2>
+<p><b>Problem:</b> given a photo of an aircraft, name its family (for example Boeing 737, Airbus A320, Cessna 172). This is fine-grained image classification: many families look alike, so small details decide the answer.</p>
+<p><b>Approach:</b> three ImageNet-pretrained CNNs (MobileNetV2, ResNet18, EfficientNet-B0) were fine-tuned on FGVC-Aircraft. The best on the validation set, EfficientNet-B0, was evaluated once on the untouched test set. Grad-CAM explains the predictions, and a deletion test checks that the heatmaps are meaningful.</p>
+<div class="cards">
+<div class="card"><b>79.96%</b><span>test top-1 accuracy</span></div>
+<div class="card"><b>94.06%</b><span>test top-5 accuracy</span></div>
+<div class="card"><b>78.21%</b><span>test macro F1</span></div>
+<div class="card"><b>70</b><span>aircraft families</span></div>
+<div class="card"><b>4.1 M</b><span>parameters (about 16 MB model)</span></div>
+</div>
+</section>
+
+<section id="demo">
+<h2>Live demo: model predictions</h2>
+<div class="demo">
+<p>Pick a test image or upload your own aircraft photo. The model runs <b>in your browser</b> (ONNX Runtime Web), so your image is never uploaded anywhere.</p>
+<div id="status">Loading model (about 16 MB)...</div>
+<div class="thumbs">
+<button class="thumb" data-src="samples/00_CRJ-200.jpg" title="Test image: CRJ-200"><img src="samples/00_CRJ-200.jpg" alt="Test photo of a CRJ-200" loading="lazy" width="112" height="112"><span>CRJ-200</span></button>
+<button class="thumb" data-src="samples/01_Falcon_2000.jpg" title="Test image: Falcon 2000"><img src="samples/01_Falcon_2000.jpg" alt="Test photo of a Falcon 2000" loading="lazy" width="112" height="112"><span>Falcon 2000</span></button>
+<button class="thumb" data-src="samples/02_Boeing_727.jpg" title="Test image: Boeing 727"><img src="samples/02_Boeing_727.jpg" alt="Test photo of a Boeing 727" loading="lazy" width="112" height="112"><span>Boeing 727</span></button>
+<button class="thumb" data-src="samples/03_Eurofighter_Typhoon.jpg" title="Test image: Eurofighter Typhoon"><img src="samples/03_Eurofighter_Typhoon.jpg" alt="Test photo of a Eurofighter Typhoon" loading="lazy" width="112" height="112"><span>Eurofighter Typhoon</span></button>
+<button class="thumb" data-src="samples/04_DH-82.jpg" title="Test image: DH-82"><img src="samples/04_DH-82.jpg" alt="Test photo of a DH-82" loading="lazy" width="112" height="112"><span>DH-82</span></button>
+<button class="thumb" data-src="samples/05_Embraer_E-Jet.jpg" title="Test image: Embraer E-Jet"><img src="samples/05_Embraer_E-Jet.jpg" alt="Test photo of a Embraer E-Jet" loading="lazy" width="112" height="112"><span>Embraer E-Jet</span></button>
+<button class="thumb" data-src="samples/06_Dash_8.jpg" title="Test image: Dash 8"><img src="samples/06_Dash_8.jpg" alt="Test photo of a Dash 8" loading="lazy" width="112" height="112"><span>Dash 8</span></button>
+<button class="thumb" data-src="samples/07_SR-20.jpg" title="Test image: SR-20"><img src="samples/07_SR-20.jpg" alt="Test photo of a SR-20" loading="lazy" width="112" height="112"><span>SR-20</span></button>
+<button class="thumb" data-src="samples/08_A340.jpg" title="Test image: A340"><img src="samples/08_A340.jpg" alt="Test photo of a A340" loading="lazy" width="112" height="112"><span>A340</span></button>
+<button class="thumb" data-src="samples/09_Il-76.jpg" title="Test image: Il-76"><img src="samples/09_Il-76.jpg" alt="Test photo of a Il-76" loading="lazy" width="112" height="112"><span>Il-76</span></button>
+<button class="thumb" data-src="samples/10_Falcon_2000.jpg" title="Test image: Falcon 2000"><img src="samples/10_Falcon_2000.jpg" alt="Test photo of a Falcon 2000" loading="lazy" width="112" height="112"><span>Falcon 2000</span></button>
+<button class="thumb" data-src="samples/11_Hawk_T1.jpg" title="Test image: Hawk T1"><img src="samples/11_Hawk_T1.jpg" alt="Test photo of a Hawk T1" loading="lazy" width="112" height="112"><span>Hawk T1</span></button>
+</div>
+<label for="file"><b>Or upload a photo:</b></label>
+<input type="file" id="file" accept="image/*">
+<div class="row">
+<img id="preview" alt="Selected image">
+<div id="results" aria-live="polite"></div>
+</div>
+<p class="note">Uploaded photos are squashed to 224x224 and normalised exactly like the test images. Accuracy on photos from other cameras and angles can be lower than the 79.96% benchmark score.</p>
+</div>
+</section>
+
+<section id="links">
+<h2>Project links</h2>
+<ul class="links">
+<li><b>GitHub repository (code, dataset link, model weights):</b> <a href="https://github.com/Muhammad-Ishtiaq-Haider/aircraft-family-gradcam">https://github.com/Muhammad-Ishtiaq-Haider/aircraft-family-gradcam</a></li>
+<li><b>Project report:</b> <a href="YOUR_REPORT_URL">YOUR_REPORT_URL</a></li>
+<li><b>Presentation (slides):</b> <a href="YOUR_SLIDES_URL">YOUR_SLIDES_URL</a></li>
+<li><b>YouTube video (voiceover):</b> <a href="YOUR_YOUTUBE_URL">YOUR_YOUTUBE_URL</a></li>
+<li><b>Dataset (official source):</b> <a href="https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/">https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/</a></li>
+<li><b>Model weights:</b> <a href="weights/aircraft_family_efficientnet_b0.pth">PyTorch (.pth)</a>, <a href="weights/aircraft_family_efficientnet_b0.onnx">ONNX (.onnx)</a>, <a href="weights/labels.json">labels.json</a></li>
+</ul>
+</section>
+
+<section id="dataset">
+<h2>Dataset details</h2>
+<ul>
+<li><b>Name:</b> FGVC-Aircraft (release 2013b) by Maji, Rahtu, Kannala, Blaschko and Vedaldi, Oxford Visual Geometry Group (arXiv:1306.5151). A secondary, public benchmark dataset.</li>
+<li><b>Labels:</b> family level, 70 classes.</li>
+<li><b>Split:</b> official, unchanged: 3,334 train / 3,333 validation / 3,333 test images (10,000 in total, about 48 training images per family on average; family sizes vary).</li>
+<li><b>Preprocessing:</b> a 20-pixel copyright banner at the bottom of every image is cropped away, then images are resized to 224x224 and normalised with ImageNet mean and standard deviation.</li>
+<li><b>Augmentation (training only):</b> random resized crop (scale 0.5 to 1.0), horizontal flip, light colour jitter.</li>
+<li><b>Access:</b> downloaded automatically by <code>torchvision.datasets.FGVCAircraft</code>. It is not stored in the repository (about 2.6 GB). For non-commercial research and education only.</li>
+</ul>
+<h3>Class balance</h3>
+<div class="plots"><img src="results/class_distribution.png" alt="Bar chart of training images per aircraft family" loading="lazy"></div>
+</section>
+
+<section id="code">
+<h2>Code and model details</h2>
+<div class="table-wrap"><table>
+<tr><th>Item</th><th>Detail</th></tr>
+<tr><td>Framework</td><td>PyTorch 2.11 and torchvision 0.26, trained on Google Colab (Tesla T4 GPU)</td></tr>
+<tr><td>Models compared</td><td>MobileNetV2, ResNet18, EfficientNet-B0 (ImageNet-pretrained, all layers fine-tuned)</td></tr>
+<tr><td>Optimiser and schedule</td><td>AdamW (max lr 5e-4, weight decay 1e-2), OneCycleLR</td></tr>
+<tr><td>Loss</td><td>cross-entropy with label smoothing 0.1</td></tr>
+<tr><td>Training</td><td>20 epochs, batch size 64, mixed precision, seed 42</td></tr>
+<tr><td>Model selection</td><td>highest validation accuracy; the test set was used once, afterwards</td></tr>
+<tr><td>Deployment</td><td>weights exported to ONNX (matches PyTorch on 100 of 100 test images) and run in the browser by this page</td></tr>
+</table></div>
+<h3>Run it yourself</h3>
+<pre>git clone https://github.com/Muhammad-Ishtiaq-Haider/aircraft-family-gradcam
+cd aircraft-family-gradcam
+pip install -r requirements.txt
+python predict.py samples/
+python gradcam.py samples/ --out gradcam_out</pre>
+<p>The full pipeline (data, training, evaluation, Grad-CAM, export) is in the notebook <a href="notebook/Aircraft_Family_Recognition_GradCAM.ipynb"><code>notebook/Aircraft_Family_Recognition_GradCAM.ipynb</code></a>, saved with its outputs.</p>
+</section>
+
+<section id="results-section">
+<h2>Results (test set, 3,333 images)</h2>
+<div class="table-wrap"><table>
+<tr><th>Model</th><th>Val acc</th><th>Test top-1</th><th>Test top-5</th><th>Macro F1</th><th>Params (M)</th><th>Train time</th></tr>
+<tr><td>MobileNetV2</td><td>77.17%</td><td>78.04%</td><td>93.52%</td><td>76.42%</td><td>2.31</td><td>26.3 min</td></tr>
+<tr><td>ResNet18</td><td>76.36%</td><td>77.02%</td><td>91.84%</td><td>75.16%</td><td>11.21</td><td>25.5 min</td></tr>
+<tr><td><b>EfficientNet-B0 (selected)</b></td><td><b>78.64%</b></td><td><b>79.96%</b></td><td><b>94.06%</b></td><td><b>78.21%</b></td><td>4.10</td><td>26.1 min</td></tr>
+</table></div>
+<p class="note">Approximate 95% confidence interval for the selected model's test accuracy: 78.6% to 81.3% (normal approximation, n = 3,333). One training run per model, so differences of about one point are within noise.</p>
+<div class="plots">
+<img src="results/model_comparison.png" alt="Bar chart comparing test accuracy of the three models" loading="lazy">
+<img src="results/training_curves.png" alt="Validation accuracy and training loss curves for the three models" loading="lazy" style="margin-top:12px">
+</div>
+<h3>Where the model makes mistakes</h3>
+<div class="table-wrap"><table>
+<tr><th>True family</th><th>Predicted</th><th>Count</th></tr>
+<tr><td>C-47</td><td>DC-3</td><td>16</td></tr>
+<tr><td>Boeing 777</td><td>Boeing 767</td><td>11</td></tr>
+<tr><td>A320</td><td>A330</td><td>9</td></tr>
+<tr><td>MD-90</td><td>MD-80</td><td>7</td></tr>
+<tr><td>MD-80</td><td>MD-90</td><td>7</td></tr>
+<tr><td>MD-11</td><td>DC-10</td><td>7</td></tr>
+<tr><td>Boeing 707</td><td>Boeing 747</td><td>7</td></tr>
+<tr><td>A320</td><td>Boeing 737</td><td>7</td></tr>
+<tr><td>Fokker 50</td><td>Dash 8</td><td>6</td></tr>
+<tr><td>Embraer E-Jet</td><td>Boeing 737</td><td>6</td></tr>
+</table></div>
+<p>The confusions are between visually or historically close designs. C-47 versus DC-3 is largely a labelling ambiguity, because the C-47 is the military version of the DC-3.</p>
+<div class="plots"><img src="results/confusion_matrix.png" alt="Confusion matrix of the EfficientNet-B0 model on the test set" loading="lazy"></div>
+<p><a href="results/results.json">results.json</a> holds every number; <a href="results/classification_report.txt">classification_report.txt</a> has per-class precision, recall and F1.</p>
+</section>
+
+<section id="gradcam">
+<h2>Explainability with Grad-CAM</h2>
+<p>Grad-CAM highlights the image regions that most increased the score of the predicted family, using the last convolutional block of EfficientNet-B0. In the examples the heat concentrates on the aircraft body (fuselage, wings, engines) and largely ignores sky and ground. The maps are coarse (7x7 resolution) and tend to be centre-weighted, so they show where the model looks, not which exact part it uses.</p>
+<p><b>Deletion test</b> (300 correctly classified test images): hiding the 25% of pixels Grad-CAM marks as most important lowered the true-class probability by 0.738 on average (from 0.771), while hiding the 25% marked least important lowered it by only 0.007. The most-important region hurt more in 300 of 300 images. This is a sanity check, not a proof, because masking also changes the image statistics.</p>
+<div class="plots">
+<img src="results/gradcam_correct.png" alt="Grad-CAM overlays for six correct predictions" loading="lazy">
+<img src="results/gradcam_errors.png" alt="Grad-CAM overlays for six misclassified images" loading="lazy" style="margin-top:12px">
+<img src="results/gradcam_deletion_test.png" alt="Bar chart of the Grad-CAM deletion test" loading="lazy" style="margin-top:12px;max-width:480px">
+</div>
+<h3>More Grad-CAM examples</h3>
+<div class="gallery">
+<figure><img src="gradcam_examples/00_CRJ-200_gradcam.png" alt="Grad-CAM heatmap for a CRJ-200" loading="lazy"><figcaption>CRJ-200</figcaption></figure>
+<figure><img src="gradcam_examples/01_Falcon_2000_gradcam.png" alt="Grad-CAM heatmap for a Falcon 2000" loading="lazy"><figcaption>Falcon 2000</figcaption></figure>
+<figure><img src="gradcam_examples/02_Boeing_727_gradcam.png" alt="Grad-CAM heatmap for a Boeing 727" loading="lazy"><figcaption>Boeing 727</figcaption></figure>
+<figure><img src="gradcam_examples/03_Eurofighter_Typhoon_gradcam.png" alt="Grad-CAM heatmap for a Eurofighter Typhoon" loading="lazy"><figcaption>Eurofighter Typhoon</figcaption></figure>
+<figure><img src="gradcam_examples/04_DH-82_gradcam.png" alt="Grad-CAM heatmap for a DH-82" loading="lazy"><figcaption>DH-82</figcaption></figure>
+<figure><img src="gradcam_examples/05_Embraer_E-Jet_gradcam.png" alt="Grad-CAM heatmap for a Embraer E-Jet" loading="lazy"><figcaption>Embraer E-Jet</figcaption></figure>
+<figure><img src="gradcam_examples/06_Dash_8_gradcam.png" alt="Grad-CAM heatmap for a Dash 8" loading="lazy"><figcaption>Dash 8</figcaption></figure>
+<figure><img src="gradcam_examples/07_SR-20_gradcam.png" alt="Grad-CAM heatmap for a SR-20" loading="lazy"><figcaption>SR-20</figcaption></figure>
+<figure><img src="gradcam_examples/08_A340_gradcam.png" alt="Grad-CAM heatmap for a A340" loading="lazy"><figcaption>A340</figcaption></figure>
+<figure><img src="gradcam_examples/09_Il-76_gradcam.png" alt="Grad-CAM heatmap for a Il-76" loading="lazy"><figcaption>Il-76</figcaption></figure>
+<figure><img src="gradcam_examples/10_Falcon_2000_gradcam.png" alt="Grad-CAM heatmap for a Falcon 2000" loading="lazy"><figcaption>Falcon 2000</figcaption></figure>
+<figure><img src="gradcam_examples/11_Hawk_T1_gradcam.png" alt="Grad-CAM heatmap for a Hawk T1" loading="lazy"><figcaption>Hawk T1</figcaption></figure>
+</div>
+</section>
+
+<section id="limitations">
+<h2>Limitations</h2>
+<ul>
+<li>One training run with one seed; small differences between models are within noise.</li>
+<li>All reported numbers come from the FGVC-Aircraft test split. Photos from other cameras, angles or lighting may give lower accuracy, and the model was not tested on outside images.</li>
+<li>Family-level labels group several variants; near-identical designs (777 vs 767, MD-80 vs MD-90) remain the main error source.</li>
+<li>Images are squashed to 224x224, which distorts wide aircraft photos; a higher resolution would likely help.</li>
+</ul>
+</section>
+
+<section id="references">
+<h2>References</h2>
+<ol>
+<li>S. Maji, E. Rahtu, J. Kannala, M. Blaschko, A. Vedaldi. Fine-Grained Visual Classification of Aircraft. arXiv:1306.5151, 2013.</li>
+<li>R. Selvaraju et al. Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization. ICCV 2017.</li>
+<li>M. Tan, Q. Le. EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks. ICML 2019.</li>
+<li>M. Sandler et al. MobileNetV2: Inverted Residuals and Linear Bottlenecks. CVPR 2018.</li>
+<li>K. He et al. Deep Residual Learning for Image Recognition. CVPR 2016.</li>
+</ol>
+</section>
+
+</main>
+<footer>
+Deep Learning semester project, Muhammad Ishtiaq Haider. Code under the MIT licence; FGVC-Aircraft images remain under their original non-commercial research licence.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script>
+(function () {
+  var MODEL_URL = "weights/aircraft_family_efficientnet_b0.onnx";
+  var LABELS_URL = "weights/labels.json";
+  var statusEl = document.getElementById("status");
+  var resultsEl = document.getElementById("results");
+  var previewEl = document.getElementById("preview");
+  var session = null, cfg = null;
+
+  function setStatus(t) { statusEl.textContent = t; }
+
+  async function init() {
+    try {
+      if (typeof ort === "undefined") throw new Error("ONNX Runtime Web did not load (check your internet connection)");
+      ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+      ort.env.wasm.numThreads = 1;
+      cfg = await (await fetch(LABELS_URL)).json();
+      session = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ["wasm"] });
+      setStatus("Model ready. Choose a test image or upload a photo.");
+    } catch (e) {
+      setStatus("Could not load the model: " + e.message);
+    }
+  }
+
+  function toTensor(img) {
+    var s = cfg.input_size;
+    var c = document.createElement("canvas");
+    c.width = s; c.height = s;
+    var ctx = c.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, s, s);
+    var d = ctx.getImageData(0, 0, s, s).data;
+    var n = s * s, out = new Float32Array(3 * n);
+    for (var i = 0; i < n; i++) {
+      for (var ch = 0; ch < 3; ch++) {
+        out[ch * n + i] = (d[i * 4 + ch] / 255 - cfg.mean[ch]) / cfg.std[ch];
+      }
+    }
+    return new ort.Tensor("float32", out, [1, 3, s, s]);
+  }
+
+  function softmax(a) {
+    var m = Math.max.apply(null, a), e = a.map(function (x) { return Math.exp(x - m); });
+    var sum = e.reduce(function (p, q) { return p + q; }, 0);
+    return e.map(function (x) { return x / sum; });
+  }
+
+  async function predict(img) {
+    if (!session) { setStatus("The model is not loaded yet."); return; }
+    setStatus("Predicting...");
+    try {
+      var out = await session.run({ input: toTensor(img) });
+      var probs = softmax(Array.from(out.logits.data));
+      var idx = probs.map(function (p, i) { return i; }).sort(function (a, b) { return probs[b] - probs[a]; }).slice(0, 5);
+      resultsEl.innerHTML = "<b>Top 5 predictions</b>" + idx.map(function (i) {
+        var pct = (probs[i] * 100).toFixed(1);
+        return '<div class="bar-row"><span>' + cfg.classes[i] + '</span><div class="bar"><i style="width:' + pct + '%"></i></div><span>' + pct + '%</span></div>';
+      }).join("");
+      setStatus("Done.");
+    } catch (e) {
+      setStatus("Prediction failed: " + e.message);
+    }
+  }
+
+  function show(src) {
+    var img = new Image();
+    img.onload = function () { previewEl.src = src; previewEl.style.display = "block"; predict(img); };
+    img.onerror = function () { setStatus("Could not read that image."); };
+    img.src = src;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".thumb"), function (b) {
+    b.addEventListener("click", function () { show(b.getAttribute("data-src")); });
+  });
+  document.getElementById("file").addEventListener("change", function (ev) {
+    var f = ev.target.files && ev.target.files[0];
+    if (f) show(URL.createObjectURL(f));
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
