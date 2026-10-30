@@ -8,7 +8,7 @@ Classifies an aircraft photo into one of **70 aircraft families** (e.g. Boeing 7
 
 | Item | Link |
 |---|---|
-| Live web app (Vercel) | YOUR_VERCEL_URL |
+| Live web app (Vercel) | https://aircraft-family-gradcam.vercel.app/ |
 | Project report | YOUR_REPORT_URL |
 | Presentation (slides) | YOUR_SLIDES_URL |
 | YouTube video | YOUR_YOUTUBE_URL |
