@@ -11,7 +11,7 @@ Classifies an aircraft photo into one of **70 aircraft families** (e.g. Boeing 7
 | Live web app (Vercel) | https://aircraft-family-gradcam.vercel.app/ |
 | Project report | https://aircraft-family-gradcam.vercel.app/report/Aircraft_Family_Recognition_Report.pdf |
 | Presentation (slides) | https://aircraft-family-gradcam.vercel.app/slides/Aircraft_Family_Recognition_Slides.pptx |
-| YouTube video | YOUR_YOUTUBE_URL |
+| YouTube video | https://youtu.be/cD7ZXYaKIM8 |
 | LinkedIn post | YOUR_LINKEDIN_URL |
 | Dataset (official source) | https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/ |
 
