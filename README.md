@@ -9,7 +9,7 @@ Classifies an aircraft photo into one of **70 aircraft families** (e.g. Boeing 7
 | Item | Link |
 |---|---|
 | Live web app (Vercel) | https://aircraft-family-gradcam.vercel.app/ |
-| Project report | YOUR_REPORT_URL |
+| Project report | https://aircraft-family-gradcam.vercel.app/report/Aircraft_Family_Recognition_Report.pdf |
 | Presentation (slides) | YOUR_SLIDES_URL |
 | YouTube video | YOUR_YOUTUBE_URL |
 | LinkedIn post | YOUR_LINKEDIN_URL |
@@ -73,7 +73,7 @@ Grad-CAM is computed on the last convolutional block of EfficientNet-B0. Example
 ## Quick start
 
 ```bash
-git clone YOUR_GITHUB_REPO_URL
+git clone https://github.com/Muhammad-Ishtiaq-Haider/aircraft-family-gradcam
 cd aircraft-family-gradcam
 pip install -r requirements.txt
 
